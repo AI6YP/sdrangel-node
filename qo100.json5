@@ -1,0 +1,16 @@
+[{
+  plutoSdrInputSettings: {
+    centerFrequency: 439720000,
+    devSampleRate: 2083336,
+    lpfBW: 200000,
+    log2Decim: 3
+  }
+}, {
+  plutoSdrOutputSettings: {
+    centerFrequency: 147140000,
+    devSampleRate: 2083336,
+    log2Interp: 3,
+    lpfBW: 200000,
+    att: 0
+  }
+}]

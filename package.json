@@ -1,0 +1,38 @@
+{
+  "name": "sdrangel-node",
+  "version": "1.0.0",
+  "description": "NodeJS scripts for SDRangel",
+  "main": "index.js",
+  "scripts": {
+    "test": "eslint bin"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AI6YP/sdrangel-node.git"
+  },
+  "keywords": [],
+  "author": "AI6YP",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/AI6YP/sdrangel-node/issues"
+  },
+  "homepage": "https://github.com/AI6YP/sdrangel-node#readme",
+  "eslintConfig": {
+    "extends": "@drom/eslint-config/eslint4/node8"
+  },
+  "devDependencies": {
+    "@drom/eslint-config": "^0.10.0",
+    "eslint": "^5.16.0"
+  },
+  "dependencies": {
+    "body-parser": "^1.19.0",
+    "express": "^4.16.2",
+    "fs-extra": "^8.1.0",
+    "ip": "^1.1.5",
+    "json5": "^2.1.0",
+    "portfinder": "^1.0.13",
+    "request": "^2.88.0",
+    "request-promise-native": "^1.0.7",
+    "yargs": "^13.3.0"
+  }
+}
