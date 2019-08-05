@@ -2,6 +2,7 @@
 'use strict';
 
 const http = require('http');
+const chp = require('child_process');
 const fs = require('fs-extra');
 const express = require('express');
 const bodyParser = require('body-parser');
@@ -10,6 +11,8 @@ const portfinder = require('portfinder');
 const rp = require('request-promise-native');
 const json5 = require('json5');
 const yargs = require('yargs');
+
+const msleep = time => new Promise(resolve => setTimeout(() => resolve(), time));
 
 const argv = yargs
   .option('ip', {
@@ -24,8 +27,10 @@ const argv = yargs
   .help()
   .argv;
 
+const baseUri = `http://${argv.ip}/sdrangel`;
+
 function angel () {
-  let p = [`http://${argv.ip}/sdrangel`];
+  let p = [baseUri];
   for (let i = 0; i < arguments.length; i++) {
     p.push(arguments[i]);
   }
@@ -43,26 +48,51 @@ const tx = angel('deviceset', 1);
 
 const initConfig = async () => {
   // client
-  await rp({method: 'POST',  uri: rx('device', 'run'), json: true});
-  await rp({method: 'POST',  uri: tx('device', 'run'), json: true});
-  await rp({method: 'PATCH', uri: rx('focus'), json: true});
+  const sdrangel = chp.spawn('sdrangel');
+  sdrangel.stdout.on('data', (data) => { console.log(`stdout: ${data}`); });
+  sdrangel.stderr.on('data', (data) => { console.log(`stderr: ${data}`); });
+  sdrangel.on('close', (code) => { console.log(`child process exited with code ${code}`); });
+  await msleep(5000);
+
+  await rp({method: 'PUT', uri: rx('device'), json: true, body: {hwType: 'PlutoSDR', direction: 0}});
+  await rp({method: 'POST', uri: rx('channel'), json: true, body: {channelType: 'SSBDemod', direction: 0}});
+
+  await rp({method: 'POST', uri: baseUri + '/deviceset?direction=1'});
+  await rp({method: 'PUT', uri: tx('device'), json: true, body: {hwType: 'PlutoSDR', direction: 1}});
+  await rp({method: 'POST', uri: tx('channel'), json: true, body: {channelType: 'SSBMod', direction: 1}});
 
   if (argv.config) {
     const fbody = await fs.readFile(argv.config, 'utf8');
     const config = json5.parse(fbody);
 
     let rxset = await rp({uri: rx('device', 'settings'), json: true});
-    Object.assign(rxset, config[0]);
+    console.log(rxset);
+    Object.assign(rxset, config[0].device);
     await rp({method: 'PATCH', uri: rx('device', 'settings'), json: true, body: rxset});
 
+    let demodset = await rp({uri: rx('channel', 0, 'settings'), json: true});
+    console.log(demodset);
+    Object.assign(demodset, config[0].channel);
+    await rp({method: 'PATCH', uri: rx('channel', 0, 'settings'), json: true, body: demodset});
+
     let txset = await rp({uri: tx('device', 'settings'), json: true});
-    Object.assign(txset, config[1]);
+    console.log(txset);
+    Object.assign(txset, config[1].device);
     await rp({method: 'PATCH', uri: tx('device', 'settings'), json: true, body: txset});
+
+    let modset = await rp({uri: tx('channel', 0, 'settings'), json: true});
+    console.log(modset);
+    Object.assign(modset, config[1].channel);
+    await rp({method: 'PATCH', uri: tx('channel', 0, 'settings'), json: true, body: modset});
+
   }
+
+  await rp({method: 'POST',  uri: rx('device', 'run'), json: true});
+  await rp({method: 'PATCH', uri: rx('focus'), json: true});
+  await rp({method: 'POST',  uri: tx('device', 'run'), json: true});
 };
 
 const main = async () => {
-  await initConfig();
   // server
   const app = express();
   app.use(bodyParser.json());
@@ -78,9 +108,11 @@ const main = async () => {
   });
   const server = http.createServer(app);
   const port = await portfinder.getPortPromise();
-  server.listen(port, () => {
+  server.listen(port, async () => {
     const addr = 'http://' + ip.address() + ':' + server.address().port + '/';
     console.log(addr);
+    await msleep(1000);
+    await initConfig();
   });
 };
 
