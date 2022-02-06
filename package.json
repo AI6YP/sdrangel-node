@@ -1,6 +1,6 @@
 {
   "name": "sdrangel-node",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "NodeJS scripts for SDRangel",
   "main": "index.js",
   "scripts": {
