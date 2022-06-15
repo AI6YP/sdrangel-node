@@ -27,11 +27,11 @@
       log2Interp: 4,
       lpfBW: 100000,
       att: 0 // максимальная выходня мощность плуто
-    },
-    channel: { // правая
-      SSBModSettings: {
-        modAFInput: 1
-      }
+    }
+  },
+  channel: { // правая
+    SSBModSettings: {
+      modAFInput: 1
     }
   }
 }]
