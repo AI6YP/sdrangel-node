@@ -12,6 +12,7 @@ const bodyParser = require('body-parser');
 const portfinder = require('portfinder');
 const json5 = require('json5');
 const merge = require('lodash.merge');
+const midi = require('midi');
 
 // const yargs = require('yargs');
 
@@ -29,7 +30,7 @@ const exiter = (code) => {
   process.exit(code);
 };
 
-const initConfig = async (rp, opts) => {
+const initConfig = async (rp, opts, state) => {
   // client
   const sdrangel = chp.spawn('sdrangel', {stdio: 'inherit'});
 
@@ -75,9 +76,12 @@ const initConfig = async (rp, opts) => {
   }
 
   if (opts.config) {
+
     const fbody = await fs.readFile(opts.config, 'utf8');
     const config = json5.parse(fbody);
-    
+
+    state.SATR = (config[0] || {}).SATR ? -1 : 1;
+
     let rxset = await rp({path: [...rx, 'device', 'settings']}); // 200
     merge(rxset, config[0].device);
     console.log(rxset);
@@ -104,6 +108,80 @@ const initConfig = async (rp, opts) => {
   await rp({method: 'POST',  path: [...tx, 'device', 'run']});
 };
 
+const listenMidi = async (rp, state) => {
+    // midi
+    const input = new midi.Input();
+    const inputPortCount = input.getPortCount();
+    let idx;
+    for (let i = 0; i < inputPortCount; i++) {
+      const portName = input.getPortName(i);
+      if (portName.match(/WORLDE/)) {
+        idx = i;
+        console.log(idx, portName);
+        break;
+      }
+    }
+    const rxset = await rp({path: [...rx, 'device', 'settings']}); // 200
+    const centerFrequency = rxset.plutoSdrInputSettings.centerFrequency;
+    console.log(rxset);
+
+    let inFlight = 0;
+    let newRIT;
+    input.on('message', async (deltaTime, message) => {
+      if (message[0] === 192) {
+        newRIT = -(message[1] - 64) * 50; // -3.2...+3.1 KHz
+        inFlight += 1;
+        if (inFlight > 1) { // previous callback(s) is(are) still running
+          return;
+        }
+        for (let i = 0; i < 1000; i++) { // maximum callback overlap
+          const difRIT = newRIT - state.RIT;
+          console.log('RIT', newRIT);
+          const rx0 = await rp({path: [...rx, 'channel', 0, 'settings']});
+          rx0.SSBDemodSettings.inputFrequencyOffset -= difRIT;
+          await rp({method: 'PATCH', path: [...rx, 'channel', 0, 'settings'], body: rx0});
+          state.RIT = newRIT;
+          if (inFlight > 1) {
+            inFlight = 1;
+            continue;
+          }
+          inFlight = 0;
+          console.log(i);
+          break;
+        }
+      } else
+      // if (message[0] === 176) {
+      //   if (message[1] === 9) {
+      //     state.RIT = (message[2] - 64) * 50; // -3.2...+3.1 KHz
+      //     console.log('RIT', state.RIT);
+      //     // const rx0 = await rp({path: [...rx, 'channel', 0, 'settings']});
+      //     // await rp({method: 'PATCH', path: [...rx, 'channel', 0, 'settings'], body: rx0});
+      //     return;
+      //   }
+        // } else
+        // if (message[1] === 10) {
+        //   console.log('SSBDemodSettings.inputFrequencyOffset');
+        //   const rx0 = await rp({path: [...rx, 'channel', 0, 'settings']});
+        //   rx0.SSBDemodSettings.inputFrequencyOffset = (message[1] - 64) * 50;
+        //   await rp({method: 'PATCH', path: [...rx, 'channel', 0, 'settings'], body: rx0});
+        // } else
+        // if (message[1] === 14) {
+        //   console.log('plutoSdrInputSettings.centerFrequency');
+        //   merge(rxset, {
+        //     plutoSdrInputSettings: {
+        //       centerFrequency: centerFrequency + (message[1] - 64) * 50
+        //     }
+        //   });
+        //   // console.log(message, rxset);
+        //   await rp({method: 'PATCH', path: [...rx, 'device', 'settings'], body: rxset}); // 200
+      // }
+      {
+        console.log(message);
+      }
+    });
+    input.openPort(idx);
+};
+
 const main = async () => {
   // const argv = yargs
   // .option('ip',     {alias: 'i', describe: 'SDRangel IP address', default: '127.0.0.1:8091'})
@@ -111,6 +189,11 @@ const main = async () => {
   // .version()
   // .help()
   // .argv;
+
+  const state = {
+    RIT: 0,
+    SATR: 1 // no reverse
+  };
 
   program
     .option('-i, --ip <type>', 'SDRangel IP address', '127.0.0.1:8091')
@@ -126,19 +209,34 @@ const main = async () => {
     // console
   );
 
-
+  let inFlight = 0;
   // server
   const app = express();
   app.use(bodyParser.json());
   app.patch('/sdrangel/deviceset/0/channel/0/settings', async function (req, res) {
     console.log('\u001b[32m<==\u001b[0m');
-    res.send('OK');
-    const fOffset = ((req.body || {}).SSBDemodSettings || {}).inputFrequencyOffset;
-    if (fOffset !== undefined) {
-      // console.log(fOffset);
-      const tx0 = await rp({path: [...tx, 'channel', 0, 'settings']});
-      tx0.SSBModSettings.inputFrequencyOffset = fOffset;
-      await rp({method: 'PATCH', path: [...tx, 'channel', 0, 'settings'], body: tx0});
+
+    inFlight += 1;
+    if (inFlight > 1) { // previous callback(s) is(are) still running
+      res.send('OK');
+      return;
+    }
+
+    for (let i = 0; i < 1000; i++) { // maximum callback overlap
+      const rxOffset = ((req.body || {}).SSBDemodSettings || {}).inputFrequencyOffset;
+      if (rxOffset !== undefined) {
+        const tx0 = await rp({path: [...tx, 'channel', 0, 'settings']});
+        tx0.SSBModSettings.inputFrequencyOffset = state.SATR * rxOffset + state.RIT;
+        await rp({method: 'PATCH', path: [...tx, 'channel', 0, 'settings'], body: tx0});
+      }
+      if (inFlight > 1) {
+        inFlight = 1;
+        continue;
+      }
+      inFlight = 0;
+      console.log(i);
+      res.send('OK');
+      break;
     }
   });
   const server = http.createServer(app);
@@ -147,8 +245,10 @@ const main = async () => {
     const addr = 'http://' + ip.address() + ':' + server.address().port + '/';
     console.log(addr);
     await msleep(1000);
-    await initConfig(rp, opts);
+    await initConfig(rp, opts, state);
+    listenMidi(rp, state);
   });
+
 };
 
 main();
