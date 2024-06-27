@@ -1,0 +1,31 @@
+[{
+  device: {  // левая
+    plutoSdrInputSettings: {
+      centerFrequency: 144180000,
+      devSampleRate: 2083336,
+      lpfBW: 200000,
+      log2Decim: 3,
+      gain: 70
+    }
+  },
+  channel: { // правая SSB демодулятор
+    SSBDemodSettings: {
+      agc: 1,
+      volume: 5,
+      reverseAPIPort: 8000, // для трансиверного режима
+      useReverseAPI: 1
+    }
+  }
+}, {
+  device: {
+    plutoSdrOutputSettings: {
+      centerFrequency: 144180000,
+      devSampleRate: 2083336,
+      log2Interp: 3,
+      lpfBW: 200000,
+      att: 0
+    }
+  }
+}, { // для харона
+  gpios: [6, 125, 8, 4]
+}]
