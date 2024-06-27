@@ -30,6 +30,7 @@ const main = async () => {
   program
     .option('-i, --ip <type>', 'SDRangel IP address', '127.0.0.1:8091')
     .option('-c, --config <type>', 'SDR config file')
+    .option('-x, --xapoh <type>', 'XAPOH IP address')
     .parse(process.argv);
 
   const opts = program.opts();
@@ -51,6 +52,17 @@ const main = async () => {
     transceiverMode: false,
     rp
   };
+
+  if (opts.xapoh) {
+    const socket = new WebSocket('ws://' + opts.xapoh + '/dev1');
+    socket.binaryType = 'arraybuffer';
+    // Connection opened
+    await new Promise((resolve, reject) => {
+      socket.addEventListener('open', () => resolve());
+    });
+    state.xapoh = socket;
+    console.log('XAPOH OPEN *********************************************', );
+  }
 
   // server
   const app = express();
