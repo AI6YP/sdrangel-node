@@ -91,6 +91,8 @@ const main = async () => {
     await msleep(1000);
     console.log('*********************** TXRX ***********************')
     state.transceiverMode = true;
+    console.log('Use < and > to step the clock.');
+    console.log('Use + and - to change the step amount.');
     installKeyHandler(state);
   });
 
