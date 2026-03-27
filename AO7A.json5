@@ -1,0 +1,44 @@
+[{ // приёмник
+  device: { // левая
+    plutoSdrInputSettings: {
+      centerFrequency: 435640000,
+      transverterMode: 1,
+      transverterDeltaFrequency: 0, // Fначальная по нулям! IT4077
+      devSampleRate: 2083336,
+      lpfBW: 100000,
+      log2Decim: 4,
+      gainMode: 0, // AGC 0=manual 1=slow
+      gain: 70
+    }
+  },
+  channel: { // правая SSB демодулятор
+    SSBDemodSettings: {
+      agc: 1,
+      volume: 5,
+      reverseAPIPort: 8000, // для трансиверного режима
+      useReverseAPI: 1
+    }
+  }
+}, { // передатчик
+  device: { // левая
+    plutoSdrOutputSettings: {
+      centerFrequency: 145965000,
+      devSampleRate: 2083336,
+      log2Interp: 4,
+      lpfBW: 100000,
+      att: 0 // максимальная выходная мощность плуто
+    }
+  },
+  channel: { // правая
+    SSBModSettings: {
+      modAFInput: 3,
+      bandwidth: 2500, // Hz
+      lowCutoff: 300, // Hz
+      spanLog2: 4, // 3=6KHz, 4=3KHz
+      useReverseAPI: 1,
+      reverseAPIPort: 8000,
+    }
+  }
+}, { // для харона
+  gpios: [6, 107, 10, 5]
+}]

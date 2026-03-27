@@ -1,0 +1,49 @@
+[{ // приёмник
+  device: { // левая
+    plutoSdrInputSettings: {
+      centerFrequency: 489554000,
+      transverterMode: 1,
+      transverterDeltaFrequency: -250017000, // Fнач. по нулям! IT4077 Цена 1 дел=1Гц
+      devSampleRate: 2100000, // 2083336,
+      lpfBW: 100000, // ???
+      log2Decim: 4,
+      gainMode: 0, // AGC 0=manual 1=slow
+      gain: 70
+    }
+  },
+  channel: { // правая SSB демодулятор
+    SSBDemodSettings: {
+      agc: 1,
+      volume: 5,
+      useReverseAPI: 1, // для трансиверного режима
+      reverseAPIPort: 8000,
+      spectrumConfig: {
+        fftSize: 2048,
+        powerRange: 48,
+        refLevel: -20
+      }
+    }
+  }
+}, { // передатчик
+  device: { // левая
+    plutoSdrOutputSettings: {
+      centerFrequency: 2400094000,
+      devSampleRate: 2100000, // 2083336,
+      log2Interp: 4,
+      lpfBW: 100000,
+      att: 0 // максимальная выходная мощность плуто
+    }
+  },
+  channel: { // правая
+    SSBModSettings: {
+      modAFInput: 3,
+      bandwidth: 2500, // Hz
+      lowCutoff: 300, // Hz
+      spanLog2: 4, // 3=6KHz, 4=3KHz
+      useReverseAPI: 1,
+      reverseAPIPort: 8000,
+    }
+  }
+}, { // для харона
+  gpios: [6, 60, 84, 4]
+}]
