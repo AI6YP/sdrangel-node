@@ -4,7 +4,7 @@
       centerFrequency: 489554000,
       transverterMode: 1,
       transverterDeltaFrequency: -250017000, // Fнач. по нулям! IT4077 Цена 1 дел=1Гц
-      devSampleRate: 2100000, // 2083336,
+      devSampleRate: 2083336,
       lpfBW: 100000, // ???
       log2Decim: 4,
       gainMode: 0, // AGC 0=manual 1=slow
@@ -28,7 +28,7 @@
   device: { // левая
     plutoSdrOutputSettings: {
       centerFrequency: 2400094000,
-      devSampleRate: 2100000, // 2083336,
+      devSampleRate: 2083336,
       log2Interp: 4,
       lpfBW: 100000,
       att: 0 // максимальная выходная мощность плуто
