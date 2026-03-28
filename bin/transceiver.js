@@ -20,6 +20,7 @@ const listenMidi = require('../lib/listen-midi.js');
 const transceiverHandler = require('../lib/transceiver-handler.js');
 const initConfig = require('../lib/init-config.js');
 const loadConfig = require('../lib/load-config.js');
+const updateRitClosure = require('../lib/update-rit.js');
 
 const { program } = require('commander');
 
@@ -67,6 +68,8 @@ const main = async () => {
     totalTimeOffset: 0,
     rp
   };
+
+  state.updateRit = updateRitClosure(state);
 
   if (opts.config) {
     const configPath = path.resolve('.', opts.config);
@@ -125,8 +128,7 @@ const main = async () => {
         
         switch (data.type) {
           case 'rit':
-            state.RIT = data.value;
-            broadcast(wss, { type: 'update', state: { RIT: state.RIT } });
+            await state.updateRit(data.value);
             break;
           case 'transceiver':
             state.transceiverMode = data.value;
