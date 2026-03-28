@@ -4,10 +4,27 @@ NodeJS scripts for SDRangel
 
 * Setup RX, TX from config file
 * Lock RX -> TX delta F
+* Integrated Web UI for remote control
+* Optional MIDI support
 
+### Usage
+
+```bash
+./bin/transceiver.js [options]
 ```
-./bin/transeiver.js
-```
+
+**Options:**
+- `-i, --ip <type>`: SDRangel IP address (default: `127.0.0.1:8091`)
+- `-c, --config <type>`: SDR config file
+- `-x, --xapoh <type>`: XAPOH IP address
+- `-m, --midi`: Enable MIDI functionality (disabled by default)
+- `--test-ui`: Launch Web UI in test mode without starting SDRangel
+
+### Web UI
+The transceiver script hosts a built-in Web UI (accessible via the URL printed at startup).
+- **Row 1:** Channel selection buttons.
+- **Row 2:** RIT slider (-3.2 to +3.1 kHz) and TRX ON/OFF toggle.
+- **Row 3:** Time offset (tweaktime) slider for incremental clock adjustments.
 
 ![](bd.svg)
 # Retime JS & Tweaktime
@@ -46,10 +63,9 @@ sudo chown root:root ./tweaktime/tweaktime
 sudo chmod +s ./tweaktime/tweaktime
 ```
 
-## Usage
+## Usage (Integrated Keyboard Controls)
 
-### Integrated with Transceiver (Recommended)
-The functionality is integrated into `../bin/transceiver.js`. When running the transceiver:
+When running the transceiver:
 - `<` or `,` : Retard clock by current step.
 - `>` or `.` : Advance clock by current step.
 - `+` or `=` : Increase adjustment step size.

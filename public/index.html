@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SDRangel Transceiver Web UI</title>
+    <style>
+        body {
+            background-color: #121212;
+            color: #e0e0e0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .row {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-bottom: 2px solid #333;
+            box-sizing: border-box;
+            padding: 5px 15px;
+            width: 100%;
+        }
+        .row:last-child {
+            border-bottom: none;
+        }
+        .first-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            gap: 15px;
+        }
+        .channel-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            flex-grow: 1;
+        }
+        button {
+            background-color: #2a2a2a;
+            color: white;
+            border: 2px solid #444;
+            padding: 12px 20px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        button:active {
+            background-color: #444;
+        }
+        .trx-btn {
+            min-width: 140px;
+            height: 60px;
+            font-size: 1.3rem;
+            border: 3px solid transparent;
+        }
+        .trx-on {
+            background-color: #1b5e20; /* Dark Green */
+            border-color: #4caf50;
+        }
+        .trx-off {
+            background-color: #b71c1c; /* Dark Red */
+            border-color: #f44336;
+        }
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+        }
+        .header-box {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            margin-bottom: 10px;
+            align-items: baseline;
+        }
+        .label {
+            font-size: 1.4rem;
+            font-weight: bold;
+            color: #aaa;
+        }
+        .value-display {
+            font-size: 2.2rem;
+            font-weight: bold;
+            color: #00ff00;
+            text-align: right;
+        }
+        .slider-container {
+            width: 100%;
+            display: flex;
+            align-items: center;
+        }
+        input[type="range"] {
+            width: 100%;
+            -webkit-appearance: none;
+            background: #333;
+            height: 50px;
+            border-radius: 25px;
+            outline: none;
+            margin: 0;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 70px;
+            height: 70px;
+            background: #2196f3;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(0,0,0,0.7);
+            border: 2px solid white;
+        }
+    </style>
+</head>
+<body>
+    <div class="row">
+        <div class="first-row">
+            <div class="channel-buttons" id="channel-container">
+                <!-- Channel buttons generated here -->
+            </div>
+            <button class="trx-btn trx-on" id="transceiver-btn">TRX ON</button>
+        </div>
+    </div>
+    <div class="row">
+        <div class="control-group">
+            <div class="header-box">
+                <div class="label">RIT</div>
+                <div class="value-display" id="rit-value">0 Hz</div>
+            </div>
+            <div class="slider-container">
+                <input type="range" id="rit-slider" min="-3000" max="3000" value="0" step="50">
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="control-group">
+            <div class="header-box">
+                <div class="label">Time Offset (total)</div>
+                <div class="value-display" id="time-value">0 ms</div>
+            </div>
+            <div class="slider-container">
+                <input type="range" id="time-slider" min="-3000" max="3000" value="0" step="50">
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const ws = new WebSocket(`ws://${location.host}`);
+        
+        const ritSlider = document.getElementById('rit-slider');
+        const ritValue = document.getElementById('rit-value');
+        const timeSlider = document.getElementById('time-slider');
+        const timeValue = document.getElementById('time-value');
+        const trxBtn = document.getElementById('transceiver-btn');
+        const channelContainer = document.getElementById('channel-container');
+
+        let trxMode = true;
+        let currentTotalOffset = 0;
+
+        ws.onopen = () => console.log('Connected to server');
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            if (data.type === 'init') {
+                renderChannels(data.channels);
+                updateUI(data.state);
+            } else if (data.type === 'update') {
+                updateUI(data.state);
+            }
+        };
+
+        function renderChannels(channels) {
+            channelContainer.innerHTML = '';
+            channels.forEach(ch => {
+                const btn = document.createElement('button');
+                btn.textContent = ch.name;
+                btn.onclick = () => ws.send(JSON.stringify({ type: 'channel', id: ch.id }));
+                channelContainer.appendChild(btn);
+            });
+        }
+
+        function updateUI(state) {
+            if (state.RIT !== undefined) {
+                ritSlider.value = state.RIT;
+                ritValue.textContent = `${state.RIT} Hz`;
+            }
+            if (state.transceiverMode !== undefined) {
+                trxMode = state.transceiverMode;
+                trxBtn.textContent = trxMode ? 'TRX ON' : 'TRX OFF';
+                trxBtn.className = `trx-btn ${trxMode ? 'trx-on' : 'trx-off'}`;
+            }
+            if (state.totalTimeOffset !== undefined) {
+                currentTotalOffset = state.totalTimeOffset;
+                timeValue.textContent = `${currentTotalOffset} ms`;
+                timeSlider.value = currentTotalOffset;
+            }
+        }
+
+        ritSlider.oninput = () => {
+            ritValue.textContent = `${ritSlider.value} Hz`;
+        };
+        ritSlider.onchange = () => {
+            ws.send(JSON.stringify({ type: 'rit', value: parseInt(ritSlider.value) }));
+        };
+
+        timeSlider.oninput = () => {
+            timeValue.textContent = `${timeSlider.value} ms`;
+        };
+        timeSlider.onchange = () => {
+            const newValue = parseInt(timeSlider.value);
+            const delta = newValue - currentTotalOffset;
+            if (delta !== 0) {
+                ws.send(JSON.stringify({ type: 'tweaktime', value: delta }));
+            }
+        };
+
+        trxBtn.onclick = () => {
+            ws.send(JSON.stringify({ type: 'transceiver', value: !trxMode }));
+        };
+    </script>
+</body>
+</html>
